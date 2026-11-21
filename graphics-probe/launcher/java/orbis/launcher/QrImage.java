@@ -2,12 +2,12 @@ package orbis.launcher;
 
 import orbis.launcher.qr.QrCode;
 
-/** Encodes Microsoft's verification page only; the visible user code is entered on that page. */
-final class LoginQr {
-    private LoginQr() { }
+/** Encodes a URL for display in a QR code. */
+final class QrImage {
+    private QrImage() { }
 
-    static boolean[][] encode(String verificationUri) {
-        QrCode qr = QrCode.encodeText(verificationUri, QrCode.Ecc.MEDIUM);
+    static boolean[][] encode(String url) {
+        QrCode qr = QrCode.encodeText(url, QrCode.Ecc.MEDIUM);
         boolean[][] modules = new boolean[qr.size][qr.size];
         for (int y = 0; y < qr.size; y++)
             for (int x = 0; x < qr.size; x++) modules[y][x] = qr.getModule(x, y);

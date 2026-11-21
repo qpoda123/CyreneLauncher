@@ -17,20 +17,20 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-/** Account metadata is separate from the locally stored Microsoft refresh credentials. */
+/** Local player profiles and legacy ownership metadata. */
 final class AccountStore {
     static final String OFFLINE_ID = "offline";
     static final String OWNERSHIP_REQUIRED =
-            "Create or sign in to your own Microsoft account that owns Minecraft: Java Edition before installing.";
+            "Minecraft downloads require a previously verified ownership account. Offline profiles can launch installed versions.";
+    static final String OFFLINE_ACCOUNT_REQUIRED = "Create or select an offline profile before playing.";
     private static final int SCHEMA = 1;
     private static final int MAX_METADATA = 65536;
     private static final int MAX_CREDENTIAL = 16384;
 
     record Account(String id, String kind, String username, String uuid) { }
-    record Session(String username, String uuid, String accessToken, String userType, String xuid,
-                   String clientId) {
+    record Session(String username, String uuid, String accessToken, String userType) {
         @Override public String toString() { return "Session[username=" + username + ", uuid=" + uuid
-                + ", accessToken=<redacted>, userType=" + userType + ", xuid=<redacted>, clientId=<redacted>]"; }
+                + ", accessToken=<redacted>, userType=" + userType + "]"; }
     }
     record Credential(String clientId, String refreshToken) {
         @Override public String toString() { return "Credential[redacted]"; }
@@ -59,12 +59,12 @@ final class AccountStore {
     }
 
     synchronized List<Account> list() { return List.copyOf(accounts); }
-    /** Microsoft accounts are saved only after Minecraft ownership was confirmed (MicrosoftAuthClient). */
+    /** A previously verified owner record can authorize game downloads. */
     synchronized boolean hasOwnedMinecraft() {
         for (Account account : accounts) {
             if (!"microsoft".equals(account.kind())) continue;
             try { credential(account.id()); return true; }
-            catch (IOException unavailable) { /* Expired or missing sign-in does not grant offline use. */ }
+            catch (IOException unavailable) { /* Missing or invalid owner credentials do not authorize downloads. */ }
         }
         return false;
     }
@@ -77,13 +77,14 @@ final class AccountStore {
     synchronized Account resolveAccount(String instanceOverride) throws IOException {
         String id = instanceOverride == null || instanceOverride.isBlank() ? defaultId : instanceOverride;
         Account account = get(id);
-        if (account == null) throw new IOException(OWNERSHIP_REQUIRED);
+        if (account == null || !"offline".equals(account.kind())) throw new IOException(OFFLINE_ACCOUNT_REQUIRED);
         return account;
     }
 
     synchronized Account selectDefault(String id) throws IOException {
         Account account = get(id);
         if (account == null) throw new IOException("Unknown account");
+        if (!"offline".equals(account.kind())) throw new IOException("Only offline profiles are supported");
         String previous = defaultId;
         defaultId = id;
         try { save(); } catch (IOException failure) { defaultId = previous; throw failure; }
@@ -102,7 +103,7 @@ final class AccountStore {
     synchronized Session offlineSession(String id) throws IOException {
         Account account = get(id);
         if (account == null || !"offline".equals(account.kind())) throw new IOException("Unknown offline account");
-        return new Session(account.username(), account.uuid(), "0", "legacy", "", "");
+        return new Session(account.username(), account.uuid(), "0", "legacy");
     }
 
     private static String offlineUuid(String name) throws IOException {

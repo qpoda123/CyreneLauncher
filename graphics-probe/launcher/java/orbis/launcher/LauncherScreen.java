@@ -6,13 +6,10 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -30,7 +27,7 @@ import static org.lwjgl.glfw.GLFW.*;
  * The launcher's screen: the instance with Play, Mods, Settings and Quit; the installed mods; a
  * Modrinth browser for mods and modpacks with each project's description, gallery and versions,
  * whose installs are checked for the console first (ModInstaller, PackInstaller); and the accounts
- * with Microsoft sign-in by QR code. Controller, keyboard and mouse all work: the mouse through
+ * with offline player profiles. Controller, keyboard and mouse all work: the mouse through
  * regions each frame records (Clicks). Network and file work runs on background threads; its
  * results are applied on this, the GL thread.
  */
@@ -108,9 +105,6 @@ class LauncherScreen {
 
     // Accounts page.
     private AccountStore accounts;
-    private MicrosoftAuthClient.DeviceSession login;
-    private boolean[][] loginQr;
-    private boolean loginPolling;
     private String accountRemovePending;
 
     // Mods page.
@@ -201,7 +195,6 @@ class LauncherScreen {
                     applyEvents("", input.events());
                     applyMouse(input.mouse());
                     pollSystemKeyboard();
-                    pollMicrosoftLogin();
                     glfwGetFramebufferSize(window, w, h);
                     frame(w[0], h[0]);
                 } catch (RuntimeException | LinkageError | AssertionError failure) {
@@ -214,9 +207,6 @@ class LauncherScreen {
                 glfwSwapBuffers(window);
             }
         } finally {
-            if (login != null) {
-                try { authClient().cancelLogin(login); } catch (IOException ignored) { /* Nothing was saved. */ }
-            }
             try {
                 if (systemKeyboard.active()) {
                     requestSystemKeyboardCancel();
@@ -285,7 +275,7 @@ class LauncherScreen {
         return accounts;
     }
 
-    /** Downloading Minecraft needs a signed-in owner; says so instead of starting the download. */
+    /** Downloading Minecraft needs a previously verified owner; offline profiles can play installed versions. */
     private boolean ownsMinecraft() {
         try {
             if (accounts().hasOwnedMinecraft()) return true;
@@ -294,15 +284,6 @@ class LauncherScreen {
         }
         setStatus(AccountStore.OWNERSHIP_REQUIRED, WARN);
         return false;
-    }
-
-    MicrosoftAuthClient authClient() throws IOException {
-        return new MicrosoftAuthClient(accounts(), config.home);
-    }
-
-    private boolean microsoftLoginAvailable() {
-        try { return authClient().loginAvailable(); }
-        catch (IOException unavailable) { return false; }
     }
 
     // ------------------------------------------------------------------ input
@@ -347,10 +328,6 @@ class LauncherScreen {
                 shareLogAction(action);
                 break;
             }
-            if (login != null) {
-                if (action == Input.Action.BACK) { cancelMicrosoftLogin(); break; }
-                continue;
-            }
             if (cloneOptions) {
                 cloneOptionAction(action);
                 if (!cloneOptions) break;
@@ -386,7 +363,7 @@ class LauncherScreen {
                 act(event);
                 if (editor.active() || systemKeyboardOpen || removePending != null
                         || instanceRemovePending != null || accountRemovePending != null || cloneOptions
-                        || login != null || plan != null || pack != null || sharePreview != null) break;
+                        || plan != null || pack != null || sharePreview != null) break;
             }
         }
     }
@@ -500,7 +477,7 @@ class LauncherScreen {
                     AccountStore.Account account = accounts().putOffline(value);
                     accounts().selectDefault(account.id());
                     selected = accountList().indexOf(account);
-                    setStatus("Playing offline as " + account.username() + ". Authenticated servers require your Microsoft account.", GOOD);
+                    setStatus("Offline profile " + account.username() + " selected.", GOOD);
                 } catch (IOException | IllegalArgumentException failure) {
                     setStatus("Cannot add offline account: " + failure.getMessage(), ERROR);
                 }
@@ -637,7 +614,7 @@ class LauncherScreen {
     /** No dialog, edit or work in progress: a click may change the page directly. */
     private boolean idle() {
         return !busy && !editor.active() && !systemKeyboardOpen && removePending == null && instanceRemovePending == null
-                && accountRemovePending == null && login == null && !cloneOptions && plan == null && pack == null
+                && accountRemovePending == null && !cloneOptions && plan == null && pack == null
                 && galleryOpen < 0 && sharePreview == null;
     }
 
@@ -724,7 +701,7 @@ class LauncherScreen {
             case VERSIONS -> 1 + catalog.size();
             case SETTINGS -> SETTINGS_ROWS;
             case CREATE -> 2;
-            case ACCOUNTS -> accountList().size() + (microsoftLoginAvailable() ? 2 : 1);
+            case ACCOUNTS -> accountList().size() + 1;
             case MODS -> 1 + mods.size();
             case BROWSE -> browseRows();
             case PROJECT -> 1;
@@ -752,7 +729,6 @@ class LauncherScreen {
             case ACCOUNTS -> {
                 List<AccountStore.Account> list = accountList();
                 if (selected < list.size()) makeDefault(list.get(selected));
-                else if (microsoftLoginAvailable() && selected == list.size()) startMicrosoftLogin();
                 else beginEdit(Field.OFFLINE_NAME, source);
             }
             case SETTINGS -> {
@@ -839,16 +815,17 @@ class LauncherScreen {
                 InstanceStore.Instance current = config.selectedInstance();
                 switch (detailSelected) {
                     case 0 -> play();
-                    case 1 -> { go(Page.MODS, -1); refreshMods(); setStatus("", DIM); }
-                    case 2 -> { go(Page.SETTINGS, 0); setStatus("", DIM); }
-                    case 3 -> { go(Page.CREATE, 0); setStatus("", DIM); }
-                    case 4 -> { nameMode = NameMode.CLONE; nameTargetId = current.id(); beginEdit(Field.INSTANCE_NAME, source); }
-                    case 5 -> { nameMode = NameMode.RENAME; nameTargetId = current.id(); beginEdit(Field.INSTANCE_NAME, source); }
-                    case 6 -> {
+                    case 1 -> offlineLogin(source);
+                    case 2 -> { go(Page.MODS, -1); refreshMods(); setStatus("", DIM); }
+                    case 3 -> { go(Page.SETTINGS, 0); setStatus("", DIM); }
+                    case 4 -> { go(Page.CREATE, 0); setStatus("", DIM); }
+                    case 5 -> { nameMode = NameMode.CLONE; nameTargetId = current.id(); beginEdit(Field.INSTANCE_NAME, source); }
+                    case 6 -> { nameMode = NameMode.RENAME; nameTargetId = current.id(); beginEdit(Field.INSTANCE_NAME, source); }
+                    case 7 -> {
                         if (config.instances.list().size() <= 1) setStatus("Keep at least one instance.", WARN);
                         else { instanceRemovePending = current.id(); removeConfirmed = false; }
                     }
-                    case 7 -> reviewLog();
+                    case 8 -> reviewLog();
                     default -> closeWindow();
                 }
             }
@@ -860,8 +837,8 @@ class LauncherScreen {
     private volatile String workText;
     private volatile double workFraction = -1;
 
-    private static final List<String> HOME_ACTIONS = List.of("Play", "Mods", "Instance settings", "New instance",
-            "Clone", "Rename", "Remove", "Share crash log", "Quit");
+    private static final List<String> HOME_ACTIONS = List.of("Play", "Offline login", "Mods", "Instance settings",
+            "New instance", "Clone", "Rename", "Remove", "Share crash log", "Quit");
     /** Heap, GPU memory, JVM arguments, Minecraft arguments, debug log, Save, Back. */
     private static final int SETTINGS_ROWS = 7;
     private Page browseFrom = Page.MODS;
@@ -1048,11 +1025,11 @@ class LauncherScreen {
             }, this::play);
             return;
         }
-        background("Checking account before starting...", () -> {
+        background("Preparing offline profile before starting...", () -> {
             if (dirty) config.save();
             // One account for every instance: the one selected on the Accounts page.
             AccountStore.Account account = accounts().resolveAccount("");
-            authClient().refresh(account.id());
+            accounts().offlineSession(account.id());
             InstanceStore.Instance current = config.instances.get(instance.id());
             VersionStore.Installed version = config.installed(current);
             if (version != null) {
@@ -1167,71 +1144,44 @@ class LauncherScreen {
     // ------------------------------------------------------------------ accounts
 
     private List<AccountStore.Account> accountList() {
-        try { return accounts().list(); }
+        try { return accounts().list().stream().filter(a -> "offline".equals(a.kind())).toList(); }
         catch (IOException failure) { return List.of(); }
     }
 
     private String accountName(String id) {
-        if (id == null || id.isEmpty()) return "Add your own account";
+        if (id == null || id.isEmpty()) return "No offline profile";
         try {
             AccountStore.Account account = accounts().get(id);
-            return account == null ? "Add your own account" : account.username();
+            return account == null ? "No offline profile" : account.username();
         } catch (IOException failure) { return "Unavailable"; }
-    }
-
-    /** Uploaded skin faces by account UUID (0: none to show), and those being fetched. */
-    private final java.util.Map<String, Integer> faces = new java.util.HashMap<>();
-    private final java.util.Set<String> facesLoading = new java.util.HashSet<>();
-
-    /** The network seam for skins, replaced in tests. */
-    protected SkinFaces.Source skinSource() {
-        return VersionStore::fetch;
-    }
-
-    private boolean isOfflineAccount(String id) {
-        return accountList().stream().anyMatch(a -> a.id().equals(id) && "offline".equals(a.kind()));
-    }
-
-    /** The selected Microsoft account's skin face, fetched in the background; 0 until available. */
-    private int faceTexture() {
-        String uuid;
-        try {
-            String id = accounts().defaultAccountId();
-            uuid = accountList().stream().filter(a -> a.id().equals(id) && "microsoft".equals(a.kind())).map(AccountStore.Account::uuid).findFirst().orElse(null);
-        } catch (IOException failure) { return 0; }
-        if (uuid == null) return 0;
-        Integer known = faces.get(uuid);
-        if (known != null) return known;
-        if (facesLoading.add(uuid)) {
-            SkinFaces skins = new SkinFaces(config.home.resolve("cache/skins"), skinSource());
-            infoWorker.execute(() -> {
-                int[] face;
-                try { face = skins.face(uuid); }
-                catch (IOException | RuntimeException unavailable) { face = null; }
-                int[] pixels = face;
-                results.add(() -> {
-                    int texture = 0;
-                    if (pixels != null) {
-                        java.nio.ByteBuffer rgba = org.lwjgl.system.MemoryUtil.memAlloc(pixels.length * 4);
-                        for (int argb : pixels)
-                            rgba.put((byte) (argb >> 16)).put((byte) (argb >> 8)).put((byte) argb).put((byte) (argb >>> 24));
-                        rgba.flip();
-                        texture = r.upload(SkinFaces.SIZE, SkinFaces.SIZE, rgba, true);
-                        org.lwjgl.system.MemoryUtil.memFree(rgba);
-                    }
-                    faces.put(uuid, texture);
-                });
-            });
-        }
-        return 0;
     }
 
     /** The account Play uses: the selected one, for every instance. */
     private String effectiveAccount(InstanceStore.Instance instance) {
         try {
             String id = accounts().defaultAccountId();
-            return id == null || id.isEmpty() ? "No account" : accountName(id);
+            return accountList().stream().filter(account -> account.id().equals(id))
+                    .map(AccountStore.Account::username).findFirst().orElse("No offline profile");
         } catch (IOException failure) { return "Unavailable"; }
+    }
+
+    private void offlineLogin(Input.Source source) {
+        List<AccountStore.Account> saved = accountList();
+        if (saved.isEmpty()) {
+            beginEdit(Field.OFFLINE_NAME, source);
+            return;
+        }
+        int current = 0;
+        try {
+            String id = accounts().defaultAccountId();
+            for (int i = 0; i < saved.size(); i++)
+                if (saved.get(i).id().equals(id)) { current = i; break; }
+        } catch (IOException failure) {
+            setStatus("Accounts unavailable: " + failure.getMessage(), ERROR);
+            return;
+        }
+        go(Page.ACCOUNTS, current);
+        setStatus("Choose an offline profile.", DIM);
     }
 
     private void makeDefault(AccountStore.Account account) {
@@ -1259,11 +1209,9 @@ class LauncherScreen {
                 accountRemovePending = null;
                 if (removeConfirmed) {
                     String name = accountName(id);
-                    boolean offline = isOfflineAccount(id);
                     try {
                         accounts().remove(id);
-                        setStatus(offline ? "Removed offline account " + name + "."
-                                : "Signed out " + name + ".", GOOD);
+                        setStatus("Removed offline profile " + name + ".", GOOD);
                     } catch (IOException failure) { setStatus("Cannot remove account: " + failure.getMessage(), ERROR); }
                     selected = Math.min(selected, items() - 1);
                 }
@@ -1271,65 +1219,6 @@ class LauncherScreen {
             }
             default -> { }
         }
-    }
-
-    private record LoginStart(MicrosoftAuthClient.DeviceSession session, boolean[][] qr) { }
-
-    private void startMicrosoftLogin() {
-        background("Contacting Microsoft...", () -> {
-            MicrosoftAuthClient.DeviceSession session = authClient().beginLogin();
-            return new LoginStart(session, LoginQr.encode(session.verificationUri()));
-        }, start -> {
-            login = start.session();
-            loginQr = start.qr();
-            setStatus("Waiting for sign-in on your phone or computer...", DIM);
-        });
-    }
-
-    /** Polls Microsoft no sooner than the server's interval; one poll at a time. */
-    protected void pollMicrosoftLogin() {
-        MicrosoftAuthClient.DeviceSession session = login;
-        if (session == null || loginPolling) return;
-        Instant now = Instant.now();
-        if (now.isBefore(session.nextPollAt()) && now.isBefore(session.expiresAt())) return;
-        loginPolling = true;
-        System.err.println("launcher: sign-in poll scheduled");
-        worker.execute(() -> {
-            AccountStore.Session signedIn = null;
-            Exception error = null;
-            try { signedIn = authClient().pollLogin(session); }
-            catch (Exception failure) { error = failure; }
-            catch (Throwable unexpected) {
-                System.err.println("launcher: sign-in failed unexpectedly");
-                unexpected.printStackTrace();
-                error = new IOException("Unexpected error: " + unexpected);
-            }
-            AccountStore.Session result = signedIn;
-            Exception failed = error;
-            results.add(() -> {
-                loginPolling = false;
-                if (login != session) return;
-                if (failed == null && result == null) return;
-                System.err.println("launcher: sign-in ended: " + (failed == null ? "signed in"
-                        : failed instanceof MicrosoftAuthClient.AuthException auth ? auth.category() + " at " + auth.stage()
-                        : failed.getClass().getSimpleName()));
-                login = null;
-                loginQr = null;
-                if (failed == null) setStatus("Signed in as " + result.username() + ".", GOOD);
-                else if (!(failed instanceof CancellationException))
-                    setStatus("Sign-in failed: " + failed.getMessage(), ERROR);
-                input.releaseBarrier();
-            });
-        });
-    }
-
-    private void cancelMicrosoftLogin() {
-        MicrosoftAuthClient.DeviceSession session = login;
-        login = null;
-        loginQr = null;
-        try { authClient().cancelLogin(session); } catch (IOException ignored) { /* Nothing was saved. */ }
-        setStatus("Sign-in cancelled.", WARN);
-        input.releaseBarrier();
     }
 
     // ------------------------------------------------------------------ mods
@@ -1880,7 +1769,6 @@ class LauncherScreen {
         if (removePending != null) drawRemoveDialog(s);
         if (instanceRemovePending != null) drawInstanceRemoveDialog(s);
         if (accountRemovePending != null) drawAccountRemoveDialog(s);
-        if (login != null) drawLoginDialog(s);
         if (sharePreview != null) drawShareLog(s);
         if (cloneOptions) drawCloneOptions(s);
         if (plan != null) drawPlanDialog(s);
@@ -2006,13 +1894,13 @@ class LauncherScreen {
                 r.width(r.fit(active.name(), 420 * s, 2.1f * s), 2.1f * s));
         float chipX = right - textW - avatar - 50 * s;
         r.roundRect(chipX, 26 * s, right - chipX, 80 * s, 40 * s, PANEL_HI);
-        int face = faceTexture();
-        if (face > 0) r.roundImage(face, chipX + 9 * s, 35 * s, avatar, avatar, avatar / 2, PANEL_HI);
-        else {
-            r.disc(chipX + 9 * s, 35 * s, avatar, ACCENT);
-            String initial = account.isEmpty() ? "?" : account.substring(0, 1).toUpperCase(java.util.Locale.ROOT);
-            r.textCentered(initial, chipX + 9 * s, 35 * s, avatar, avatar, 3.4f * s, TEXT);
-        }
+        r.disc(chipX + 9 * s, 35 * s, avatar, ACCENT);
+        String initial = account.isEmpty() ? "?" : account.substring(0, 1).toUpperCase(java.util.Locale.ROOT);
+        r.textCentered(initial, chipX + 9 * s, 35 * s, avatar, avatar, 3.4f * s, TEXT);
+        hit(chipX, 26 * s, right - chipX, 80 * s, () -> {
+            go(Page.ACCOUNTS, -1);
+            setStatus("Choose an offline profile or add one.", DIM);
+        }, Input.Action.CONFIRM);
         r.textMiddle(r.fit(account, 420 * s, 2.7f * s), chipX + avatar + 26 * s, 34 * s, 34 * s, 2.7f * s, TEXT);
         r.textMiddle(r.fit(active.name(), 420 * s, 2.1f * s), chipX + avatar + 26 * s, 68 * s, 28 * s, 2.1f * s, DIM);
     }
@@ -2054,7 +1942,6 @@ class LauncherScreen {
         if (instanceRemovePending != null) return "Left/Right: choice   Cross/Enter: accept   Circle/Escape: cancel";
         if (accountRemovePending != null) return "Left/Right: choice   Cross/Enter: accept   Circle/Escape: cancel";
         if (plan != null || pack != null) return "Left/Right: choice   Cross/Enter: accept   Circle/Escape: cancel";
-        if (login != null) return "Circle/Escape: cancel sign-in";
         if (busy && cancellable) return "Circle/Escape or click here: cancel";
         if (cloneOptions) return "Up/Down: choice   Cross/Enter: toggle or continue   Circle/Escape: cancel";
         if (instanceOperation != null) return "Working   Circle/Escape or click here: cancel";
@@ -2069,8 +1956,8 @@ class LauncherScreen {
             case VERSIONS -> "Left/Right: loader   Cross/Enter: choose version   Circle/Escape: back";
             case CREATE -> "Left/Right: choose   Cross/Enter: open   Circle/Escape: back";
             case SETTINGS -> "Left/Right: change   Cross/Enter: edit or select   Circle/Escape: back";
-            case INSTANCES -> "Cross/Enter: select   Left/Right or Tab: focus   L1/R1: section";
-            case ACCOUNTS -> "Cross: use this account   Triangle: remove account   Circle: back   L1/R1: section";
+            case INSTANCES -> "Cross: select   Left/Right: focus   Offline login: profile   L1/R1: section";
+            case ACCOUNTS -> "Cross: use profile   Triangle: remove profile   Circle: back   L1/R1: section";
             default -> "Cross/Enter: select   Circle/Escape: back   L1/R1: section";
         };
     }
@@ -2136,12 +2023,12 @@ class LauncherScreen {
         playButton(x, py, w, ph, playOn);
         hit(x, py, w, ph, () -> { focus = Focus.DETAIL; detailSelected = 0; }, Input.Action.CONFIRM);
         for (int i = 1; i < HOME_ACTIONS.size(); i++) {
-            float y = py + ph + 16 * s + (i - 1) * 42 * s;
+            float y = py + ph + 12 * s + (i - 1) * 36 * s;
             boolean highlighted = focus == Focus.DETAIL && detailSelected == i && !editor.active();
-            row(x, y, w, 38 * s, highlighted);
-            r.textMiddle(HOME_ACTIONS.get(i), x + 34 * s, y, 38 * s, 2.6f * s, highlighted ? TEXT : DIM);
+            row(x, y, w, 32 * s, highlighted);
+            r.textMiddle(HOME_ACTIONS.get(i), x + 34 * s, y, 32 * s, 2.6f * s, highlighted ? TEXT : DIM);
             int index = i;
-            hit(x, y, w, 38 * s, () -> { focus = Focus.DETAIL; detailSelected = index; }, Input.Action.CONFIRM);
+            hit(x, y, w, 32 * s, () -> { focus = Focus.DETAIL; detailSelected = index; }, Input.Action.CONFIRM);
         }
     }
 
@@ -2384,12 +2271,8 @@ class LauncherScreen {
         List<Integer> colors = new ArrayList<>();
         for (AccountStore.Account account : accountList()) {
             boolean isDefault = account.id().equals(defaultId);
-            rows.add(account.username() + ("offline".equals(account.kind()) ? "   Offline account" : "   Microsoft account") + (isDefault ? "   (in use)" : ""));
+            rows.add(account.username() + "   Offline profile" + (isDefault ? "   (in use)" : ""));
             colors.add(TEXT);
-        }
-        if (microsoftLoginAvailable()) {
-            rows.add("Add Microsoft account");
-            colors.add(ACCENT_HI);
         }
         rows.add("Add offline account");
         colors.add(ACCENT_HI);
@@ -2428,7 +2311,7 @@ class LauncherScreen {
                 else {
                     String snapshot = sharePreview;
                     background("Uploading reviewed report to mclo.gs...", () -> uploadSharedLog(snapshot), url -> {
-                        shareUrl = url; shareQr = LoginQr.encode(url);
+                        shareUrl = url; shareQr = QrImage.encode(url);
                         setStatus("Log shared: " + url, GOOD);
                         try { LauncherFiles.write(config.home.resolve("shared-log-url.txt"), (url + "\n").getBytes(StandardCharsets.UTF_8), false); }
                         catch (IOException unavailable) { setStatus("Log shared: " + url + " (could not save link locally)", WARN); }
@@ -2452,7 +2335,7 @@ class LauncherScreen {
             clicks.wheel(x + 30 * s, y + 200 * s, w - 60 * s, 430 * s,
                     amount -> shareScroll = Math.max(0, Math.min(Math.max(0, shareLines.size() - 12), shareScroll - (int) amount * 3)));
         } else {
-            LoginQr.draw(r, shareQr, x + 40 * s, y + 150 * s, 450 * s);
+            QrImage.draw(r, shareQr, x + 40 * s, y + 150 * s, 450 * s);
             r.text("Scan this QR code to open your report.", x + 550 * s, y + 190 * s, 2.8f * s, TEXT);
             r.text(shareUrl, x + 550 * s, y + 255 * s, 3.2f * s, ACCENT_HI);
             r.text("Send this link with your bug report.", x + 550 * s, y + 330 * s, 2.8f * s, DIM);
@@ -2468,36 +2351,14 @@ class LauncherScreen {
         }
     }
 
-    private void drawLoginDialog(float s) {
-        MicrosoftAuthClient.DeviceSession session = login;
-        float x = 260 * s, y = 230 * s, w = 1400 * s, h = 640 * s;
-        dialog(x, y, w, h);
-        r.text("SIGN IN WITH MICROSOFT", x + 40 * s, y + 35 * s, 3.5f * s, TEXT);
-        if (loginQr != null) LoginQr.draw(r, loginQr, x + 40 * s, y + 100 * s, 480 * s);
-        float tx = x + 580 * s;
-        r.text("1. Scan the code or open:", tx, y + 110 * s, 2.6f * s, DIM);
-        r.text(r.fit(session.verificationUri(), w - 620 * s, 3.2f * s), tx, y + 150 * s, 3.2f * s, ACCENT_HI);
-        r.text("2. Enter this code:", tx, y + 230 * s, 2.6f * s, DIM);
-        r.text(session.userCode(), tx, y + 275 * s, 6 * s, TEXT);
-        long left = Math.max(0, Duration.between(Instant.now(), session.expiresAt()).getSeconds());
-        r.text(String.format("Code expires in %d:%02d", left / 60, left % 60), tx, y + 400 * s, 2.6f * s,
-                left < 60 ? WARN : DIM);
-        r.text("3. Sign in with the account that owns Minecraft.", tx, y + 450 * s, 2.6f * s, DIM);
-        r.roundRect(tx, y + 545 * s, 260 * s, 60 * s, 12 * s, PANEL);
-        r.text("Cancel", tx + 30 * s, y + 557 * s, 3 * s, TEXT);
-        hit(tx, y + 545 * s, 260 * s, 60 * s, null, Input.Action.BACK);
-    }
-
     private void drawAccountRemoveDialog(float s) {
         float x = 380 * s, y = 340 * s;
         dialog(x, y, 1160 * s, 350 * s);
-        boolean offline = isOfflineAccount(accountRemovePending);
-        r.text(r.fit((offline ? "Remove " : "Sign out ") + accountName(accountRemovePending) + "?", 1080 * s, 3.5f * s),
+        r.text(r.fit("Remove " + accountName(accountRemovePending) + "?", 1080 * s, 3.5f * s),
                 x + 35 * s, y + 35 * s, 3.5f * s, TEXT);
-        r.text(offline ? "This offline profile is removed. Your worlds and instances are kept."
-                : "Signing out your last premium account also removes offline accounts.", x + 35 * s, y + 115 * s,
+        r.text("This offline profile is removed. Your worlds and instances are kept.", x + 35 * s, y + 115 * s,
                 2.5f * s, WARN);
-        choice(x + 35 * s, y + 235 * s, "Cancel", offline ? "Remove" : "Sign out", removeConfirmed, ERROR,
+        choice(x + 35 * s, y + 235 * s, "Cancel", "Remove", removeConfirmed, ERROR,
                 () -> removeConfirmed = false, () -> removeConfirmed = true);
     }
 

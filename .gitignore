@@ -6,7 +6,7 @@
 /graphics-probe/results/
 __pycache__/
 
-# Build secrets (the Microsoft application ID); CI supplies ORBIS_MSA_CLIENT_ID from GitHub Secrets.
+# Legacy local secrets file; keep ignored.
 /secrets.env
 
 /build-logs/

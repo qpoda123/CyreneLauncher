@@ -37,8 +37,9 @@ final class LauncherScreenshots {
         System.setProperty("orbis.launcher.gameMetadata", metadata.toString());
         System.setProperty("user.dir", root.resolve("game").toString());
         LauncherConfig config = LauncherConfig.load();
-        new AccountStore(config.home, config.runnerRoot).putMicrosoft(
-                "0123456789abcdef0123456789abcdef", "Steve", "00000000-0000-0000-0000-000000000000", "refresh");
+        AccountStore accounts = new AccountStore(config.home, config.runnerRoot);
+        AccountStore.Account offline = accounts.putOffline("Steve");
+        accounts.selectDefault(offline.id());
 
         if (!glfwInit()) throw new IllegalStateException("glfwInit failed");
         glfwDefaultWindowHints();
@@ -60,8 +61,8 @@ final class LauncherScreenshots {
                 new LauncherLogicTest.FakeInstaller(modrinth, game, random));
 
         save(screen, out.resolve("1-instances.png"));
-        // From the instance's actions (Play, Mods, Instance settings, New instance, ...).
-        shoot(screen, out, "2-mods", Input.Action.FOCUS, Input.Action.DOWN, Input.Action.CONFIRM);
+        // From the instance's actions (Play, Offline login, Mods, Instance settings, ...).
+        shoot(screen, out, "2-mods", Input.Action.FOCUS, Input.Action.DOWN, Input.Action.DOWN, Input.Action.CONFIRM);
         screen.apply("", List.of(Input.Action.BACK));
         shoot(screen, out, "3-instance-settings", Input.Action.FOCUS, Input.Action.DOWN, Input.Action.CONFIRM,
                 Input.Action.DOWN, Input.Action.DOWN);
@@ -102,7 +103,7 @@ final class LauncherScreenshots {
         Thread.sleep(500);
         settle(settings);
         save(settings, out.resolve("a-instances-icons.png"));
-        shoot(settings, out, "b-settings", Input.Action.FOCUS, Input.Action.DOWN, Input.Action.DOWN, Input.Action.CONFIRM,
+        shoot(settings, out, "b-settings", Input.Action.FOCUS, Input.Action.DOWN, Input.Action.DOWN, Input.Action.DOWN, Input.Action.CONFIRM,
                 Input.Action.DOWN, Input.Action.DOWN);
         settings.apply("", List.of(Input.Action.CONFIRM));     // a keyboard opens the launcher's own editor
         settle(settings);

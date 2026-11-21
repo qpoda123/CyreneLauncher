@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/** Offline accounts are independent local profiles and do not require Microsoft sign-in. */
+/** Offline accounts are independent local player profiles. */
 public final class OfflineAccountsTest {
     private OfflineAccountsTest() { }
 
@@ -16,7 +16,7 @@ public final class OfflineAccountsTest {
     static void run(Path root) throws Exception {
         Path home = root.resolve("home"), runner = root.resolve("runner");
         AccountStore store = new AccountStore(home, runner);
-        check(!store.hasOwnedMinecraft(), "fresh installation has no Microsoft owner");
+        check(!store.hasOwnedMinecraft(), "fresh installation has no verified ownership record");
         AccountStore.Account offline = add(store, "LocalPlayer");
         check(offline.kind().equals("offline"), "creates an explicit offline profile");
         check(offline.uuid().equals("c6d762506d42328ebfce7a3312675f70"), "uses Minecraft's standard offline UUID");
@@ -25,18 +25,11 @@ public final class OfflineAccountsTest {
         store.selectDefault(offline.id());
         AccountStore reopened = new AccountStore(home, runner);
         check(reopened.resolveAccount("").id().equals(offline.id()), "offline selection survives restart");
-        MicrosoftAuthClient auth = new MicrosoftAuthClient(reopened, home);
-        check(!auth.loginAvailable(), "offline-only test build without Microsoft configuration hides sign-in");
-        Files.writeString(home.resolve("microsoft-auth.properties"), "client_id=00000000-0000-0000-0000-000000000000\n");
-        check(new MicrosoftAuthClient(reopened, home).loginAvailable(),
-                "Microsoft sign-in remains available when explicitly configured");
-        Files.delete(home.resolve("microsoft-auth.properties"));
-        // No Microsoft configuration exists: this must succeed without contacting authentication services.
-        AccountStore.Session session = auth.refresh(offline.id());
+        AccountStore.Session session = reopened.offlineSession(offline.id());
         check(session.username().equals("LocalPlayer") && session.uuid().equals(offline.uuid()),
                 "offline launch uses its own identity");
-        check(session.accessToken().equals("0") && session.userType().equals("legacy")
-                && session.xuid().isEmpty() && session.clientId().isEmpty(), "no premium tokens in offline sessions");
+        check(session.accessToken().equals("0") && session.userType().equals("legacy"),
+                "offline sessions use no authentication tokens");
         check(LaunchRequest.decode(LaunchRequest.create("instance", offline.id()).encode()).accountId().equals(offline.id()),
                 "offline identity survives the restart request");
         AccountStore.Account another = add(reopened, "Another");

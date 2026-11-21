@@ -56,7 +56,7 @@ public final class ForgeModsTest {
         PackInstaller.Installed result = screen.packInstaller().install(PackInstaller.read(pack),"Exact Forge",new InstanceStore.Operation());
         ForgeProfilesTest.check(result.instance().runtimeProfile().equals(wanted),"screen pack installation reuses exact build, not a newer build");
         List<String> gameArgs = List.of(LaunchArguments.build(new String[]{"--launchTarget","wrong","--fml.mcVersion","wrong"},result.instance(),
-                new AccountStore.Session("LocalPlayer","0".repeat(32),"0","legacy","",""),config.versions.installed(wanted),root.resolve("assets")));
+                new AccountStore.Session("LocalPlayer","0".repeat(32),"0","legacy"),config.versions.installed(wanted),root.resolve("assets")));
         ForgeProfilesTest.check(!gameArgs.contains("wrong") && gameArgs.contains("forgeclient") && gameArgs.contains("--fml.mcVersion") && gameArgs.contains("LocalPlayer"),"loader arguments coexist with managed offline identity");
         java.lang.reflect.Method cycle = LauncherScreen.class.getDeclaredMethod("cycleLoader",int.class); cycle.setAccessible(true);
         java.lang.reflect.Field selected = LauncherScreen.class.getDeclaredField("versionLoader"); selected.setAccessible(true);

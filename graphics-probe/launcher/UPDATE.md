@@ -36,11 +36,10 @@ Back up configuration before uploading. Do not replace an active graphics/native
 
 Accounts page:
 
-- Cross on an account makes it the default.
-- Triangle on Offline edits the offline player name; on a Microsoft account it signs out.
-- Add Microsoft account opens the sign-in dialog; Circle cancels it.
-- The last row picks the selected instance's account with Left/Right or Cross:
-  Follow default, Offline, or a signed-in account.
+- Cross on an offline profile makes it the default.
+- Triangle removes the selected offline profile.
+- Add offline account creates a local profile.
+- The main screen's Offline login action opens the profile chooser, or asks for a player name when none exist.
 
 ## Instances
 
@@ -58,9 +57,9 @@ version and game folder. Runner debug logging is a global preference.
 An instance can follow the default account or explicitly select an account, including Offline.
 This update does not install other Minecraft versions.
 
-Play checks the account, journals temporary runner settings and restarts the application.
+Play selects the offline profile, journals temporary runner settings and restarts the application.
 A short-lived request contains IDs only. After restart the launcher consumes the request,
-restores runner files, refreshes authentication, and constructs game arguments in memory.
+restores runner files and constructs game arguments in memory.
 Failed or unrelated starts discard the request and return to the launcher. Exiting Minecraft
 closes the application; reopening it normally shows the launcher.
 
@@ -85,26 +84,11 @@ Vanilla instances have no mod browser. 1.14 to 1.16 render with older OpenGL thr
 compatibility profile and are less tested; 1.14 to 1.16 also use Mojang's current log4j
 configuration, which disables the Log4Shell lookup.
 
-## Microsoft sign-in
+## Offline profiles
 
-Copy `microsoft-auth.properties.example` to
-`/data/orbis-jdk/launcher/microsoft-auth.properties` and set your approved application's
-`client_id`. Configure it as a public client with personal Microsoft account support and
-allow device authorization/public client flows. **No client secret is used or stored.**
-
-Without that file, Add Microsoft account shows the instructions above instead of signing in.
-The client ID must also be approved for the Minecraft services API; an unapproved ID signs in
-to Microsoft and Xbox but is rejected at the Minecraft login step.
-
-Accounts → Add Microsoft account starts device sign-in. Scan the QR or visit the displayed
-Microsoft URL, then enter the displayed user code. The QR encodes the verification URL;
-it does not automatically submit the code. The launcher waits at Microsoft's polling
-interval and handles expiry, cancellation, ownership and account restrictions.
-
-Profile metadata and refresh credentials are separate local files. Refresh credentials use
-owner-only permissions where supported, but are not encrypted; protect console FTP access.
-Access tokens stay in memory. Sign-out removes the local refresh credential. Authentication
-failure never silently switches to Offline. Offline is an explicit account choice.
+The launcher has no Microsoft sign-in flow or account refresh credentials. Create a profile
+from **Offline login** on the main screen. Offline profiles can launch already-installed game
+versions; servers that require online account authentication are unavailable.
 
 ## Validation status
 
@@ -114,8 +98,8 @@ launcher screen with random input across every page, including Play: each prepar
 consumed as the next start would, and a failed restart restores runner.conf and jvm-options.
 This new workflow still needs console validation: controller navigation and held-button
 release, system keyboard submit/cancel/reopen, physical keyboard, create/clone isolation,
-mod install/cancel, QR sign-in/refresh, selected-instance Play, and recovery after a failed
-restart. Also check that the PS4 passes the launch argument through the restart: if not,
+offline profile creation/selection, mod install/cancel, selected-instance Play, and recovery
+after a failed restart. Also check that the PS4 passes the launch argument through the restart: if not,
 `/data/orbis-jdk/launcher/launcher.log` shows `launcher: no launch intent argument`, and the launcher accepts
 only a launch prepared in the last 30 seconds. A successful build does not establish these
 hardware behaviors.
@@ -129,12 +113,10 @@ flowchart LR
     Detail -->|Manage mods| Mods
     Mods --> Search --> Review[Review dependencies and warnings]
     Review -->|Confirm| Install[Install into the named instance]
-    Accounts -->|Add Microsoft| QR[QR and user code]
-    QR -->|Authorize| Account[Saved account]
-    Account -->|Default or override| Detail
+    Detail -->|Offline login| Profile[Create or select local profile]
+    Profile -->|Use profile| Detail
     Detail -->|Play| Check[Check account]
     Check --> Restart[Prepare and restart]
     Restart --> Restore[Restore runner configuration]
-    Restore --> Refresh[Refresh account]
-    Refresh --> Minecraft
+    Restore --> Minecraft
 ```

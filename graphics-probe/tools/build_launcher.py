@@ -14,7 +14,6 @@ import zipfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import launcher_secrets  # noqa: E402
 import lwjgl_sources  # noqa: E402
 import launcher_deps  # noqa: E402
 
@@ -114,13 +113,4 @@ with zipfile.ZipFile(jar, 'w', zipfile.ZIP_DEFLATED) as archive:
     for lock_path, pinned in launcher_deps.locks():
         archive.write(ROOT / 'launcher' / pinned['license_file'], 'META-INF/licenses/' + Path(pinned['license_file']).name)
         archive.write(lock_path, 'META-INF/' + lock_path.name)
-    # The Microsoft application ID: ORBIS_MSA_CLIENT_ID or the untracked secrets.env, never the sources.
-    secret = launcher_secrets.resource()
-    if secret:
-        archive.writestr(*secret)
-    if launcher_secrets.offline_only():
-        archive.writestr(launcher_secrets.OFFLINE_ONLY_RESOURCE, b'1')
-        print('launcher: offline-only test build; Microsoft sign-in is disabled')
-    elif not secret:
-        print('launcher: no ORBIS_MSA_CLIENT_ID; sign-in reads microsoft-auth.properties (development build)')
 print(f'launcher: {jar.name}, {sum(1 for _ in classes.rglob("*.class"))} classes, {merged} third-party classes')

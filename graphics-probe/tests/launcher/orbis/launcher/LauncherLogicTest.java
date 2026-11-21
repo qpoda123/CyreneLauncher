@@ -285,13 +285,12 @@ public final class LauncherLogicTest {
         store.saveSettings(id, 1152, 1536, "");
         check(store.selected().jvmArgs().equals("-XX:+UseG1GC"), "memory changes keep the arguments");
         AccountStore.Session session = new AccountStore.Session("Steve", "00000000-0000-0000-0000-000000000000", "token",
-                "msa", "", "");
+                "legacy");
         String[] args = LaunchArguments.build(new String[0], store.selected(), session);
         check(args[args.length - 1].equals("--demo"), "Minecraft arguments follow the managed ones: " + List.of(args));
         AccountStore accounts = new AccountStore(root.resolve("offline-home"), root.resolve("runner"));
-        accounts.putMicrosoft("0123456789abcdef0123456789abcdef", "Owner", "client", "refresh");
         AccountStore.Account offline = accounts.putOffline("LocalPlayer");
-        AccountStore.Session offlineSession = new MicrosoftAuthClient(accounts, root.resolve("offline-home")).refresh(offline.id());
+        AccountStore.Session offlineSession = accounts.offlineSession(offline.id());
         List<String> offlineArgs = List.of(LaunchArguments.build(new String[]{"--accessToken", "premium-secret",
                 "--xuid", "premium-xuid", "--clientId=premium-client", "--username", "Owner"}, store.selected(), offlineSession));
         check(!offlineArgs.contains("premium-secret") && !offlineArgs.contains("premium-xuid")
@@ -474,7 +473,7 @@ public final class LauncherLogicTest {
         }
         accounts.putMicrosoft("0123456789abcdef0123456789abcdef", "Tester", "00000000-0000-0000-0000-000000000000",
                 "refresh");
-        check(accounts.hasOwnedMinecraft(), "a saved Microsoft account unlocks installs");
+        check(accounts.hasOwnedMinecraft(), "a saved verified ownership record unlocks installs");
         check(accounts.defaultAccount().username().equals("Tester"), "the first own account becomes default");
         AccountStore reopened = new AccountStore(root.resolve("home"), root.resolve("runner"));
         check(reopened.list().size() == 1, "reopening retains only the user account");
@@ -499,13 +498,13 @@ public final class LauncherLogicTest {
         InstanceStore.Instance instance = new InstanceStore.Instance("i", "I", root.resolve("game"), root.resolve("x.json"),
                 "", 1024, 0, false);
         String[] configured = {"--assetsDir", "/elsewhere", "--width", "854"};
-        List<String> built = List.of(LaunchArguments.build(configured, instance, new AccountStore.Session("Tester", "0123456789abcdef0123456789abcdef", "token", "msa", "", ""),
+        List<String> built = List.of(LaunchArguments.build(configured, instance, new AccountStore.Session("Tester", "0123456789abcdef0123456789abcdef", "token", "legacy"),
                 installed("1.20.4", 17), root.resolve("assets")));
         check(built.indexOf("--assetsDir") >= 0 && built.lastIndexOf("--assetsDir") == built.indexOf("--assetsDir")
                 && built.get(built.indexOf("--assetsDir") + 1).equals(root.resolve("assets").toString()),
                 "a downloaded version uses the launcher's asset directory: " + built);
         check(built.contains("--width"), "unrelated arguments are kept");
-        List<String> builtIn = List.of(LaunchArguments.build(configured, instance, new AccountStore.Session("Tester", "0123456789abcdef0123456789abcdef", "token", "msa", "", "")));
+        List<String> builtIn = List.of(LaunchArguments.build(configured, instance, new AccountStore.Session("Tester", "0123456789abcdef0123456789abcdef", "token", "legacy")));
         check(builtIn.get(builtIn.indexOf("--assetsDir") + 1).equals("/elsewhere"), "the built-in profile keeps its own");
     }
 
@@ -941,10 +940,6 @@ public final class LauncherLogicTest {
             return LogSharing.upload(content, c -> "{\"success\":true,\"url\":\"https://mclo.gs/test123\"}");
         }
 
-        @Override protected SkinFaces.Source skinSource() {
-            return (url, max) -> { throw new IOException("offline"); };
-        }
-
         @Override protected byte[] fetchVerifiedPackFile(String url, String sha1, long size, long max) throws IOException {
             byte[] data = fetchPackFile(url, max);
             if (data.length != size || !ModrinthClient.sha1(data).equals(sha1)) throw new IOException("Test pack hash/size mismatch");
@@ -1058,11 +1053,12 @@ public final class LauncherLogicTest {
         TestScreen screen = new TestScreen(config, new HeadlessRenderer(), modrinth,
                 new FakeInstaller(modrinth, game, random), random, packs);
 
-        screen.apply("", List.of(Input.Action.NEXT_SECTION, Input.Action.DOWN, Input.Action.DOWN, Input.Action.CONFIRM));
+        screen.apply("", List.of(Input.Action.RIGHT, Input.Action.DOWN, Input.Action.CONFIRM));
         screen.apply("LocalPlayer", List.of(Input.Action.CONFIRM));
         AccountStore saved = new AccountStore(config.home, config.runnerRoot);
         check(saved.defaultAccount() != null && saved.defaultAccount().kind().equals("offline")
-                && saved.defaultAccount().username().equals("LocalPlayer"), "account screen creates and selects an offline profile without Microsoft");
+                && saved.defaultAccount().username().equals("LocalPlayer"), "home screen creates and selects an offline profile");
+        screen.apply("", List.of(Input.Action.NEXT_SECTION));
         screen.apply("", List.of(Input.Action.ALT2));
         screen.apply("", List.of(Input.Action.RIGHT, Input.Action.CONFIRM));
         check(new AccountStore(config.home, config.runnerRoot).list().isEmpty(), "account screen removes an offline profile");
@@ -1104,7 +1100,7 @@ public final class LauncherLogicTest {
         screen.apply("", List.of(Input.Action.FOCUS, Input.Action.CONFIRM));
         for (long deadline = System.nanoTime() + 5_000_000_000L; screen.applyResults(); Thread.sleep(1))
             if (System.nanoTime() > deadline) throw new AssertionError("Play did not finish");
-        check(screen.relaunches == 0, "Play waits for the user's own valid sign-in");
+        check(screen.relaunches == 0, "Play without a selected offline profile does not restart the launcher");
         check(conf.equals(Files.readString(runner.resolve("runner.conf"))), "failed restart restores runner.conf");
         check(options.equals(Files.readString(runner.resolve("jvm-options.txt"))), "failed restart restores jvm-options");
         check(!Files.exists(config.home.resolve("next-start")), "failed restart leaves no pending launch");

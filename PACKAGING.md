@@ -62,21 +62,11 @@ Every release is a complete PKG with the same content ID, so a newer one install
 PS4 patch packages (`pkg_ps4_patch`) are not possible with this toolchain: LibOrbisPkg rejects that
 volume type, and its patch content flags are unfinished.
 
-## Build secrets
+## Offline profiles
 
-Release launchers embed the Microsoft application (client) ID. It is never committed: put it in the
-untracked `secrets.env` (copy `secrets.env.example`), or in CI set `ORBIS_MSA_CLIENT_ID` from a
-repository secret, for example in a GitHub Actions step:
-
-```yaml
-env:
-  ORBIS_MSA_CLIENT_ID: ${{ secrets.ORBIS_MSA_CLIENT_ID }}
-```
-
-`graphics-probe/tools/build_launcher.py` encodes it into `orbis-launcher.jar`. A build without it
-falls back to `/data/orbis-jdk/launcher/microsoft-auth.properties`. The encoding only prevents
-casual discovery; a public client ID is visible in every sign-in request. Keep a private copy of
-`secrets.env`: the repository bundles in `orbis-port-backups` do not include untracked files.
+The launcher has no Microsoft sign-in flow, app registration, or bundled authentication credentials.
+Offline profiles use Minecraft's standard `OfflinePlayer` UUID and can launch installed game versions.
+Downloading the base game still requires a previously verified ownership record.
 
 ## Console acceptance and upgrade
 

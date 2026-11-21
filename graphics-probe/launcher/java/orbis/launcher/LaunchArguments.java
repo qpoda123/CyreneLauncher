@@ -46,8 +46,6 @@ final class LaunchArguments {
         add(args, "--userType", session.userType());
         add(args, "--userProperties", "{}");
         add(args, "--gameDir", instance.gameDir().toString());
-        if (!session.xuid().isEmpty()) add(args, "--xuid", session.xuid());
-        if (!session.clientId().isEmpty()) add(args, "--clientId", session.clientId());
         if (version != null) {
             add(args, "--version", version.id());
             add(args, "--assetsDir", assetsDir.toString());

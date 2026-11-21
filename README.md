@@ -1,6 +1,6 @@
 # Cyrene Launcher
 
-Play Minecraft: Java Edition on your PS4. Cyrene Launcher lets you sign in with Microsoft, install Minecraft versions, create separate game instances, and browse mods and modpacks from Modrinth.
+Play an installed copy of Minecraft: Java Edition on your PS4. Cyrene Launcher uses local offline profiles, manages separate game instances, and browses mods and modpacks from Modrinth.
 
 **[Download Cyrene Launcher](https://github.com/CyreneLauncher/CyreneLauncher/releases/latest)** · **[Report a problem](https://github.com/CyreneLauncher/CyreneLauncher/issues)**
 
@@ -9,13 +9,12 @@ This guide covers the current launcher. Older releases may have different menus 
 ## What you need
 
 - A PS4 already set up to install and run homebrew `.pkg` applications.
-- Your own Microsoft account that owns **Minecraft: Java Edition**.
-- Internet access for sign-in, game installation, mods, and runtime downloads.
+- An already-installed Minecraft: Java Edition version.
+- Internet access for mod and runtime downloads.
 - Free console storage for the launcher, games, runtimes, mods, and worlds. Large modpacks need more space.
 - A controller for launcher navigation. A keyboard and mouse are useful for Minecraft; controller gameplay depends on the game's controller mod and setup.
-- A phone or computer with a browser to complete Microsoft sign-in.
 
-The package includes the launcher's Java runtime and graphics libraries. You do not need to compile anything or install Java manually. Minecraft itself is downloaded after you sign in.
+The package includes the launcher's Java runtime and graphics libraries. You do not need to compile anything or install Java manually. This build has no Microsoft sign-in and does not download the base Minecraft game.
 
 ## Install and launch
 
@@ -23,9 +22,9 @@ The package includes the launcher's Java runtime and graphics libraries. You do 
 2. Download the **Cyrene Launcher `.pkg`** from the release's **Assets** section. GitHub's **Source code** archives are for developers, not installation.
 3. Transfer the package to your PS4 using your usual homebrew package-installation method, then install it with your console's package installer.
 4. Open **Cyrene Launcher** from the PS4 home screen.
-5. Sign in and create a Minecraft instance using the steps below.
+5. Choose **Offline login** on the main screen and create a local player profile.
 
-The launcher creates its settings and data folders on first launch. A fresh installation does not include a preinstalled Minecraft game.
+The launcher creates its settings and data folders on first launch. Offline login can launch game versions already installed in the launcher's data.
 
 ## Launcher controls
 
@@ -44,30 +43,17 @@ Select a text field to edit it. With a controller, the PS4 system keyboard opens
 
 Some pages have extra controls. Follow the on-screen hints when searching, managing mods, or confirming an action.
 
-## Sign in to Microsoft
+## Offline login
 
-1. Open **Accounts** and select **Add Microsoft account**.
-2. Scan the QR code with your phone, or open the Microsoft address shown on screen.
-3. Enter the displayed sign-in code. Scanning the QR opens the website; you still need to enter the code.
-4. Sign in with the account that owns Minecraft: Java Edition and complete the browser prompts.
-5. Leave the launcher dialog open while it checks your account. Your Minecraft profile appears in **Accounts** when sign-in completes.
-6. Select your account with **Cross / Enter** to use it.
+Select **Offline login** on the main screen. If you have no profile yet, enter a player name (1–16 letters, numbers, or underscores). The profile is saved locally and selected for **Play**. To switch profiles or add another, open **Accounts** from the main screen and select a profile.
 
-If the code expires, cancel and start again. **Circle / Escape** cancels sign-in. To switch accounts later, select another account on the Accounts page. To sign out, highlight the account, press **Triangle**, and confirm.
-
-You use your own account; Cyrene does not supply a Minecraft account or license. Keep saved account credentials private when copying files from the console.
-
-### Play without an internet connection
-
-After signing in with a Microsoft account that owns Minecraft: Java Edition, **Add offline account** appears in **Accounts**. Select it, enter a player name (1–16 letters, numbers, or underscores), and accept. The new profile is selected automatically. Choose an already installed instance and press **Play**.
-
-Keep at least one verified Microsoft account saved in the launcher. Signing out your last premium account removes offline profiles; sign in again to create them. Offline profiles have separate player identities, so worlds can give them different inventories and progress from your Microsoft profile.
-
-Offline play supports installed games and single-player worlds. Downloads and first-time setup still need internet access. Servers that verify Minecraft accounts require you to select your Microsoft account instead. To switch profiles, select one in **Accounts**; to remove an offline profile, highlight it, press **Triangle**, and confirm.
+Offline profiles work with installed game versions and single-player worlds. They do not authenticate with online-mode servers. This build does not include Microsoft sign-in or base-game downloads; an installed game version is required. Downloading a new base game version still requires a previously verified ownership record.
 
 ## Create your first Minecraft instance
 
 An **instance** is a separate game setup with its own name, mods, settings, and worlds. Use separate instances to try different versions or modpacks without mixing their files.
+
+This offline-only build can create instances from game versions already installed. Downloading a new base game version is unavailable unless the launcher already has a verified ownership record from an earlier version.
 
 1. Open **Instances** and choose **New instance** from the instance actions.
 2. Choose the Minecraft-version option.
@@ -97,7 +83,7 @@ Use mods made for your chosen loader: a Forge mod is not automatically a NeoForg
 
 ## Play and return to the launcher
 
-Select an instance, move to its actions, and choose **Play**. Cyrene checks your account and prepares the game. The application restarts as part of launching Minecraft, so a restart at this point is expected.
+Select an instance, move to its actions, and choose **Play**. Cyrene uses the selected offline profile and prepares the game. The application restarts as part of launching Minecraft, so a restart at this point is expected.
 
 After you exit Minecraft, reopen Cyrene Launcher from the PS4 home screen to select another instance or change settings.
 
@@ -150,7 +136,7 @@ Leave custom launch arguments empty unless you need a specific setting. The laun
 
 Updates use the same application identity and preserve existing settings and game data. Keep `/data/orbis-jdk` intact. Install the full launcher package to update its bundled components; you do not need to replace individual graphics libraries.
 
-Java 21 and 25 runtimes are checked for updates when needed. An installed runtime is retained if its update check fails; first-time installation still needs internet access. Microsoft sign-in and online play have their own connection requirements. Interrupted Minecraft, mod/modpack, and Java runtime downloads keep partial data. Retry the same operation to resume where the server supports it; servers without resume support start that file again. Already verified files are reused, and a checksum mismatch discards the incomplete file before another attempt.
+Java 21 and 25 runtimes are checked for updates when needed. An installed runtime is retained if its update check fails; first-time installation still needs internet access. Offline profiles do not authenticate with online-mode servers. Interrupted mod/modpack and Java runtime downloads keep partial data. Retry the same operation to resume where the server supports it; servers without resume support start that file again. Already verified files are reused, and a checksum mismatch discards the incomplete file before another attempt.
 
 ## Back up your worlds
 
@@ -170,15 +156,14 @@ The instance ID is an internal folder name, not necessarily the displayed name. 
 | `logs/` | Minecraft logs |
 | `crash-reports/` | Minecraft crash reports, when generated |
 
-Copy the whole instance folder to preserve its setup, or at least `saves/` to preserve worlds. Imported installations keep their existing game location. Account credentials are stored separately; do not include them in bug reports or shared backups.
+Copy the whole instance folder to preserve its setup, or at least `saves/` to preserve worlds. Imported installations keep their existing game location. Offline profile names are stored in launcher settings.
 
 ## Troubleshooting
 
 | Problem | What to try |
 | --- | --- |
-| Sign-in code expired | Cancel and choose **Add Microsoft account** again to get a new code. |
-| Minecraft ownership check fails | Confirm you used the account that owns **Java Edition**. A Bedrock-only purchase does not satisfy the Java ownership check. |
-| Sign-in says it is not configured | Report the exact message and package version. Application registration is configured by the release maintainer; players should not need to register an Azure application. |
+| No game version is available | This offline-only build launches installed game versions; it does not download the base game. |
+| Offline profile cannot log in | Enter a valid 1–16 character name using letters, numbers, or underscores, then retry. |
 | Download or runtime installation fails | Check internet access and free space, then retry. Java 21/25 must finish downloading before games needing them can launch. |
 | Minecraft crashes after adding mods | Disable the most recently added mods, check dependencies, and try an unmodified instance of the same version. |
 | A modpack will not install | Read the dialog's reason and check that it uses an offered game version and a supported loader. |

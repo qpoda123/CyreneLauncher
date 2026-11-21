@@ -3,7 +3,7 @@
 This guide is for developers and release maintainers. For installation and everyday use,
 see the [player guide](../README.md). Run the commands below from the repository root.
 
-Minecraft Java launcher and runtime integration for PS4/Orbis. Includes Microsoft sign-in, version/modpack management, controller input, desktop support and PKG assembly. Players use their own account that owns Minecraft: Java Edition; no account is pre-created.
+Minecraft Java launcher and runtime integration for PS4/Orbis. This build uses local offline profiles and includes version/modpack management, controller input, desktop support and PKG assembly.
 
 The graphics port uses native radeonsi for OpenGL and RADV for Vulkan. Zink is excluded by the native driver audit. JDK 17, 21 and 25 are reconstructed from pinned upstream source plus the Orbis patches in [orbis-openjdk](https://github.com/CyreneLauncher/orbis-openjdk).
 
@@ -20,7 +20,6 @@ export BOOT_JDK17=/path/to/host-jdk17
 export BOOT_JDK21=/path/to/host-jdk21
 export BOOT_JDK25=/path/to/host-jdk25
 export PKGTOOL=/path/to/PkgTool.Core.dll
-# Configure ORBIS_MSA_CLIENT_ID or the untracked secrets.env for release sign-in.
 ./orbis doctor
 ./orbis build
 ```
@@ -62,7 +61,7 @@ gh release download v01.06 -R CyreneLauncher/CyreneLauncher \
 
 ## GitHub Actions
 
-Both workflows run on **GitHub-hosted Ubuntu 24.04**. No self-hosted runner, local SDK paths or local build cache is required. Standard builds require `ORBIS_MSA_CLIENT_ID`, the app registration ID. For an offline-only test package, run the workflow with `offline_only=true`; that build omits the Microsoft sign-in entry and does not require the app ID. Player accounts are never supplied to CI.
+Both workflows run on **GitHub-hosted Ubuntu 24.04**. No self-hosted runner, local SDK paths, player accounts or Microsoft app registration are required. If the CyreneLauncher component repositories are private, configure `CYRENE_RELEASES_TOKEN` with read access to their source and release assets.
 
 `Build Cyrene Launcher` provisions LLVM 18, pinned Temurin host JDKs, .NET 8, OpenOrbis v0.5.4 and payload SDK v0.9. SDK archive SHA-256 values and the accepted OpenOrbis ABI files are checked before compilation. The PKG CLI is built from pinned OpenOrbis/LibOrbisPkg source. These upstream SDKs match the installed build inputs; no custom SDK fork is needed.
 
@@ -75,8 +74,6 @@ gh workflow run release.yml -R CyreneLauncher/CyreneLauncher \
   -f version=01.06 -F draft_release=true
 gh run list -R CyreneLauncher/CyreneLauncher --workflow release.yml
 ```
-
-For an offline-only test build, set `offline_only=true` and leave `draft_release` false. Offline accounts can be created and used without Microsoft sign-in.
 
 The successful package job uploads `cyrene-release-XX.YY`, containing the PKG, reusable component archive, SHA-256 checksums, runtime manifests and SDK/tool lock. Intermediate runtimes and logs are retained as Actions artifacts for 14 days. To download the final output without creating a release:
 
