@@ -13,8 +13,10 @@ from pathlib import Path
 REPOSITORY = Path(__file__).resolve().parents[2]
 SECRETS_FILE = REPOSITORY / 'secrets.env'
 VARIABLE = 'ORBIS_MSA_CLIENT_ID'
+OFFLINE_ONLY_VARIABLE = 'ORBIS_OFFLINE_ONLY'
 # Must match MicrosoftAuthClient.EMBEDDED and MicrosoftAuthClient.KEY.
 RESOURCE = 'orbis/launcher/msa-client.bin'
+OFFLINE_ONLY_RESOURCE = 'orbis/launcher/offline-only.bin'
 KEY = bytes.fromhex('5f1ca7e2093bd4718e26c05ba4f3196d')
 UUID = re.compile(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
 
@@ -37,12 +39,18 @@ def client_id(secrets_file=SECRETS_FILE):
     return value
 
 
+def offline_only():
+    return os.environ.get(OFFLINE_ONLY_VARIABLE, '').strip() == '1'
+
+
 def encode(value):
     data = value.encode('ascii')
     return bytes(b ^ KEY[i % len(KEY)] ^ (i * 31 & 0xff) for i, b in enumerate(data))
 
 
 def resource(secrets_file=SECRETS_FILE):
-    """(archive path, bytes) for the JAR, or None for a development build without an ID."""
+    """(archive path, bytes) for the JAR, or None when sign-in is unavailable or disabled."""
+    if offline_only():
+        return None
     value = client_id(secrets_file)
     return (RESOURCE, encode(value)) if value else None

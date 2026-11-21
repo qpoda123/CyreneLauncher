@@ -62,7 +62,7 @@ gh release download v01.06 -R CyreneLauncher/CyreneLauncher \
 
 ## GitHub Actions
 
-Both workflows run on **GitHub-hosted Ubuntu 24.04**. No self-hosted runner, local SDK paths or local build cache is required. The only required repository secret is `ORBIS_MSA_CLIENT_ID`, the launcher application's registration ID; player accounts are never supplied to CI.
+Both workflows run on **GitHub-hosted Ubuntu 24.04**. No self-hosted runner, local SDK paths or local build cache is required. Standard builds require `ORBIS_MSA_CLIENT_ID`, the app registration ID. For an offline-only test package, run the workflow with `offline_only=true`; that build omits the Microsoft sign-in entry and does not require the app ID. Player accounts are never supplied to CI.
 
 `Build Cyrene Launcher` provisions LLVM 18, pinned Temurin host JDKs, .NET 8, OpenOrbis v0.5.4 and payload SDK v0.9. SDK archive SHA-256 values and the accepted OpenOrbis ABI files are checked before compilation. The PKG CLI is built from pinned OpenOrbis/LibOrbisPkg source. These upstream SDKs match the installed build inputs; no custom SDK fork is needed.
 
@@ -75,6 +75,8 @@ gh workflow run release.yml -R CyreneLauncher/CyreneLauncher \
   -f version=01.06 -F draft_release=true
 gh run list -R CyreneLauncher/CyreneLauncher --workflow release.yml
 ```
+
+For an offline-only test build, set `offline_only=true` and leave `draft_release` false. Offline accounts can be created and used without Microsoft sign-in.
 
 The successful package job uploads `cyrene-release-XX.YY`, containing the PKG, reusable component archive, SHA-256 checksums, runtime manifests and SDK/tool lock. Intermediate runtimes and logs are retained as Actions artifacts for 14 days. To download the final output without creating a release:
 

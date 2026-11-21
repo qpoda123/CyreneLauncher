@@ -7,6 +7,11 @@ on:
         default: '01.06'
         required: true
         type: string
+      offline_only:
+        description: Build a test package without Microsoft sign-in
+        default: false
+        required: true
+        type: boolean
       draft_release:
         description: Create a draft GitHub release after verification
         default: false
@@ -33,6 +38,7 @@ jobs:
           path: orbis-launcher
           persist-credentials: false
       - name: Require application registration
+        if: ${{ !inputs.offline_only }}
         env:
           ORBIS_MSA_CLIENT_ID: ${{ secrets.ORBIS_MSA_CLIENT_ID }}
         run: test -n "$ORBIS_MSA_CLIENT_ID"
@@ -47,6 +53,7 @@ jobs:
     timeout-minutes: 350
     env:
       ORBIS_MSA_CLIENT_ID: ${{ secrets.ORBIS_MSA_CLIENT_ID }}
+      ORBIS_OFFLINE_ONLY: ${{ inputs.offline_only && '1' || '0' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -105,6 +112,7 @@ jobs:
       contents: write
     env:
       ORBIS_MSA_CLIENT_ID: ${{ secrets.ORBIS_MSA_CLIENT_ID }}
+      ORBIS_OFFLINE_ONLY: ${{ inputs.offline_only && '1' || '0' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -8,6 +8,8 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -50,6 +52,7 @@ final class MicrosoftAuthClient {
             this.stage = stage;
             this.httpStatus = httpStatus;
         }
+
         Category category() { return category; }
         String stage() { return stage; }
         int httpStatus() { return httpStatus; }
@@ -126,6 +129,15 @@ final class MicrosoftAuthClient {
     MicrosoftAuthClient(AccountStore accounts, Path home) {
         this.accounts = accounts;
         this.configuration = home.toAbsolutePath().normalize().resolve("microsoft-auth.properties");
+    }
+
+    boolean loginAvailable() {
+        return !offlineOnlyBuild()
+                && (embeddedClientId() != null || Files.isRegularFile(configuration, LinkOption.NOFOLLOW_LINKS));
+    }
+
+    private static boolean offlineOnlyBuild() {
+        return MicrosoftAuthClient.class.getResource(OFFLINE_ONLY) != null;
     }
 
     DeviceSession beginLogin() throws AuthException {
@@ -318,6 +330,7 @@ final class MicrosoftAuthClient {
 
     /** Written by graphics-probe/tools/launcher_secrets.py at build time; absent in development builds. */
     private static final String EMBEDDED = "msa-client.bin";
+    private static final String OFFLINE_ONLY = "offline-only.bin";
     private static final byte[] KEY = {0x5f, 0x1c, (byte) 0xa7, (byte) 0xe2, 0x09, 0x3b, (byte) 0xd4, 0x71,
             (byte) 0x8e, 0x26, (byte) 0xc0, 0x5b, (byte) 0xa4, (byte) 0xf3, 0x19, 0x6d};
     private static final String GUID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
@@ -336,6 +349,8 @@ final class MicrosoftAuthClient {
     }
 
     private String clientId() throws AuthException {
+        if (offlineOnlyBuild()) throw error(Category.CONFIGURATION, "configuration", 0,
+                "Microsoft sign-in is disabled in this offline-only test build.");
         String embedded = embeddedClientId();
         if (embedded != null) return embedded;
         try {

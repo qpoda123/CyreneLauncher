@@ -118,6 +118,9 @@ with zipfile.ZipFile(jar, 'w', zipfile.ZIP_DEFLATED) as archive:
     secret = launcher_secrets.resource()
     if secret:
         archive.writestr(*secret)
-    else:
+    if launcher_secrets.offline_only():
+        archive.writestr(launcher_secrets.OFFLINE_ONLY_RESOURCE, b'1')
+        print('launcher: offline-only test build; Microsoft sign-in is disabled')
+    elif not secret:
         print('launcher: no ORBIS_MSA_CLIENT_ID; sign-in reads microsoft-auth.properties (development build)')
 print(f'launcher: {jar.name}, {sum(1 for _ in classes.rglob("*.class"))} classes, {merged} third-party classes')

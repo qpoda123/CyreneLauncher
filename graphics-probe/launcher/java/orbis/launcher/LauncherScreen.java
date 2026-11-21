@@ -300,6 +300,11 @@ class LauncherScreen {
         return new MicrosoftAuthClient(accounts(), config.home);
     }
 
+    private boolean microsoftLoginAvailable() {
+        try { return authClient().loginAvailable(); }
+        catch (IOException unavailable) { return false; }
+    }
+
     // ------------------------------------------------------------------ input
 
     /** Legacy action-only entry point retained for callers that do not have source metadata. */
@@ -719,7 +724,7 @@ class LauncherScreen {
             case VERSIONS -> 1 + catalog.size();
             case SETTINGS -> SETTINGS_ROWS;
             case CREATE -> 2;
-            case ACCOUNTS -> accountList().size() + 2;
+            case ACCOUNTS -> accountList().size() + (microsoftLoginAvailable() ? 2 : 1);
             case MODS -> 1 + mods.size();
             case BROWSE -> browseRows();
             case PROJECT -> 1;
@@ -747,7 +752,7 @@ class LauncherScreen {
             case ACCOUNTS -> {
                 List<AccountStore.Account> list = accountList();
                 if (selected < list.size()) makeDefault(list.get(selected));
-                else if (selected == list.size()) startMicrosoftLogin();
+                else if (microsoftLoginAvailable() && selected == list.size()) startMicrosoftLogin();
                 else beginEdit(Field.OFFLINE_NAME, source);
             }
             case SETTINGS -> {
@@ -2382,8 +2387,10 @@ class LauncherScreen {
             rows.add(account.username() + ("offline".equals(account.kind()) ? "   Offline account" : "   Microsoft account") + (isDefault ? "   (in use)" : ""));
             colors.add(TEXT);
         }
-        rows.add("Add Microsoft account");
-        colors.add(ACCENT_HI);
+        if (microsoftLoginAvailable()) {
+            rows.add("Add Microsoft account");
+            colors.add(ACCENT_HI);
+        }
         rows.add("Add offline account");
         colors.add(ACCENT_HI);
         list(rows, colors, 120 * s, 280 * s, 1680 * s, 12);

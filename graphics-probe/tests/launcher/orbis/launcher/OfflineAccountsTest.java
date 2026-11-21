@@ -25,8 +25,14 @@ public final class OfflineAccountsTest {
         store.selectDefault(offline.id());
         AccountStore reopened = new AccountStore(home, runner);
         check(reopened.resolveAccount("").id().equals(offline.id()), "offline selection survives restart");
+        MicrosoftAuthClient auth = new MicrosoftAuthClient(reopened, home);
+        check(!auth.loginAvailable(), "offline-only test build without Microsoft configuration hides sign-in");
+        Files.writeString(home.resolve("microsoft-auth.properties"), "client_id=00000000-0000-0000-0000-000000000000\n");
+        check(new MicrosoftAuthClient(reopened, home).loginAvailable(),
+                "Microsoft sign-in remains available when explicitly configured");
+        Files.delete(home.resolve("microsoft-auth.properties"));
         // No Microsoft configuration exists: this must succeed without contacting authentication services.
-        AccountStore.Session session = new MicrosoftAuthClient(reopened, home).refresh(offline.id());
+        AccountStore.Session session = auth.refresh(offline.id());
         check(session.username().equals("LocalPlayer") && session.uuid().equals(offline.uuid()),
                 "offline launch uses its own identity");
         check(session.accessToken().equals("0") && session.userType().equals("legacy")
