@@ -1053,25 +1053,20 @@ public final class LauncherLogicTest {
         System.setProperty("orbis.launcher.gameMetadata", metadata.toString());
         System.setProperty("user.dir", root.resolve("game").toString());
         LauncherConfig config = LauncherConfig.load();
-        // A saved Microsoft account; without a client configuration its refresh fails safely.
-        if (seed % 2 == 0) new AccountStore(config.home, config.runnerRoot).putMicrosoft(
-                "0123456789abcdef0123456789abcdef", "Tester", "00000000-0000-0000-0000-000000000000", "refresh");
         FakePacks packs = new FakePacks(random);
         FakeModrinth modrinth = new FakeModrinth(random, packs);
         TestScreen screen = new TestScreen(config, new HeadlessRenderer(), modrinth,
                 new FakeInstaller(modrinth, game, random), random, packs);
 
-        if (seed % 2 == 0) {
-            screen.apply("", List.of(Input.Action.NEXT_SECTION, Input.Action.DOWN, Input.Action.DOWN, Input.Action.CONFIRM));
-            screen.apply("LocalPlayer", List.of(Input.Action.CONFIRM));
-            AccountStore saved = new AccountStore(config.home, config.runnerRoot);
-            check(saved.defaultAccount() != null && saved.defaultAccount().kind().equals("offline")
-                    && saved.defaultAccount().username().equals("LocalPlayer"), "account screen creates and selects an offline profile");
-            screen.apply("", List.of(Input.Action.ALT2));
-            screen.apply("", List.of(Input.Action.RIGHT, Input.Action.CONFIRM));
-            check(new AccountStore(config.home, config.runnerRoot).list().size() == 1, "account screen removes an offline profile");
-            screen.apply("", List.of(Input.Action.BACK));
-        }
+        screen.apply("", List.of(Input.Action.NEXT_SECTION, Input.Action.DOWN, Input.Action.DOWN, Input.Action.CONFIRM));
+        screen.apply("LocalPlayer", List.of(Input.Action.CONFIRM));
+        AccountStore saved = new AccountStore(config.home, config.runnerRoot);
+        check(saved.defaultAccount() != null && saved.defaultAccount().kind().equals("offline")
+                && saved.defaultAccount().username().equals("LocalPlayer"), "account screen creates and selects an offline profile without Microsoft");
+        screen.apply("", List.of(Input.Action.ALT2));
+        screen.apply("", List.of(Input.Action.RIGHT, Input.Action.CONFIRM));
+        check(new AccountStore(config.home, config.runnerRoot).list().isEmpty(), "account screen removes an offline profile");
+        screen.apply("", List.of(Input.Action.BACK));
 
         java.io.ByteArrayOutputStream packBytes = new java.io.ByteArrayOutputStream();
         try (java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(packBytes)) {

@@ -78,14 +78,12 @@ final class AccountStore {
         String id = instanceOverride == null || instanceOverride.isBlank() ? defaultId : instanceOverride;
         Account account = get(id);
         if (account == null) throw new IOException(OWNERSHIP_REQUIRED);
-        if ("offline".equals(account.kind())) requireOwnedMinecraft();
         return account;
     }
 
     synchronized Account selectDefault(String id) throws IOException {
         Account account = get(id);
         if (account == null) throw new IOException("Unknown account");
-        if ("offline".equals(account.kind())) requireOwnedMinecraft();
         String previous = defaultId;
         defaultId = id;
         try { save(); } catch (IOException failure) { defaultId = previous; throw failure; }
@@ -93,7 +91,6 @@ final class AccountStore {
     }
 
     synchronized Account putOffline(String name) throws IOException {
-        requireOwnedMinecraft();
         String uuid = offlineUuid(name);
         Account account = new Account("offline-" + uuid, "offline", name, uuid);
         if (get(account.id()) != null) throw new IOException("An offline account with that name already exists");
@@ -103,14 +100,9 @@ final class AccountStore {
     }
 
     synchronized Session offlineSession(String id) throws IOException {
-        requireOwnedMinecraft();
         Account account = get(id);
         if (account == null || !"offline".equals(account.kind())) throw new IOException("Unknown offline account");
         return new Session(account.username(), account.uuid(), "0", "legacy", "", "");
-    }
-
-    private void requireOwnedMinecraft() throws IOException {
-        if (!hasOwnedMinecraft()) throw new IOException("Offline accounts require a saved Microsoft account that owns Minecraft: Java Edition. Sign in again.");
     }
 
     private static String offlineUuid(String name) throws IOException {
@@ -213,7 +205,6 @@ final class AccountStore {
         // Sign-out revokes local use first, even if metadata persistence subsequently fails.
         if ("microsoft".equals(old.kind())) clearCredential(id);
         accounts.remove(old);
-        if (!hasOwnedMinecraft()) accounts.removeIf(account -> "offline".equals(account.kind()));
         String previous = defaultId;
         if (get(defaultId) == null) defaultId = accounts.isEmpty() ? "" : accounts.get(0).id();
         try { save(); }
@@ -248,7 +239,6 @@ final class AccountStore {
                 }
                 if (accounts.stream().map(Account::id).distinct().count() != accounts.size())
                     throw new IOException("Invalid saved account list");
-                if (!hasOwnedMinecraft()) accounts.removeIf(account -> "offline".equals(account.kind()));
                 if (get(defaultId) == null) defaultId = accounts.isEmpty() ? "" : accounts.get(0).id();
                 save();
                 return;

@@ -719,7 +719,7 @@ class LauncherScreen {
             case VERSIONS -> 1 + catalog.size();
             case SETTINGS -> SETTINGS_ROWS;
             case CREATE -> 2;
-            case ACCOUNTS -> accountList().size() + (offlineAvailable() ? 2 : 1);
+            case ACCOUNTS -> accountList().size() + 2;
             case MODS -> 1 + mods.size();
             case BROWSE -> browseRows();
             case PROJECT -> 1;
@@ -748,7 +748,7 @@ class LauncherScreen {
                 List<AccountStore.Account> list = accountList();
                 if (selected < list.size()) makeDefault(list.get(selected));
                 else if (selected == list.size()) startMicrosoftLogin();
-                else if (offlineAvailable()) beginEdit(Field.OFFLINE_NAME, source);
+                else beginEdit(Field.OFFLINE_NAME, source);
             }
             case SETTINGS -> {
                 switch (selected) {
@@ -1183,11 +1183,6 @@ class LauncherScreen {
         return VersionStore::fetch;
     }
 
-    private boolean offlineAvailable() {
-        try { return accounts().hasOwnedMinecraft(); }
-        catch (IOException unavailable) { return false; }
-    }
-
     private boolean isOfflineAccount(String id) {
         return accountList().stream().anyMatch(a -> a.id().equals(id) && "offline".equals(a.kind()));
     }
@@ -1263,7 +1258,7 @@ class LauncherScreen {
                     try {
                         accounts().remove(id);
                         setStatus(offline ? "Removed offline account " + name + "."
-                                : "Signed out " + name + "." + (offlineAvailable() ? "" : " Offline accounts are removed until you sign in again."), GOOD);
+                                : "Signed out " + name + ".", GOOD);
                     } catch (IOException failure) { setStatus("Cannot remove account: " + failure.getMessage(), ERROR); }
                     selected = Math.min(selected, items() - 1);
                 }
@@ -2389,10 +2384,8 @@ class LauncherScreen {
         }
         rows.add("Add Microsoft account");
         colors.add(ACCENT_HI);
-        if (offlineAvailable()) {
-            rows.add("Add offline account");
-            colors.add(ACCENT_HI);
-        }
+        rows.add("Add offline account");
+        colors.add(ACCENT_HI);
         list(rows, colors, 120 * s, 280 * s, 1680 * s, 12);
     }
 
