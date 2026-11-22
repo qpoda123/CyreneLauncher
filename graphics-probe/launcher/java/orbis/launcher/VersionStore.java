@@ -115,18 +115,13 @@ final class VersionStore {
     private static final Pattern PROFILE_ID = Pattern.compile("[A-Za-z0-9._+-]{1,96}");
     private static final Pattern HASH = Pattern.compile("[0-9a-f]{40}");
 
-    /** Refuses a game download unless a Minecraft owner has signed in. */
-    interface Ownership { void require() throws IOException; }
-
     private final Path versionsRoot, libraries, assets, builtInProfile;
-    private final Ownership ownership;
 
-    VersionStore(Path launcherHome, Path libraries, Path assets, Path builtInProfile, Ownership ownership) {
+    VersionStore(Path launcherHome, Path libraries, Path assets, Path builtInProfile) {
         this.versionsRoot = launcherHome.toAbsolutePath().normalize().resolve("versions");
         this.libraries = libraries.toAbsolutePath().normalize();
         this.assets = assets.toAbsolutePath().normalize();
         this.builtInProfile = builtInProfile.toAbsolutePath().normalize();
-        this.ownership = ownership;
     }
 
     Path versionsRoot() { return versionsRoot; }
@@ -267,7 +262,6 @@ final class VersionStore {
 
     Installed install(GameVersion version, Loader loader, String requestedLoader, InstanceStore.Operation op, boolean withAssets)
             throws IOException {
-        ownership.require();
         if (ForgeInstaller.family(loader) && !ForgeInstaller.supported(loader,version.id()))
             throw new IOException("Unsupported " + loader.title + " Minecraft version");
         op.progress("Reading Minecraft " + version.id() + "...");

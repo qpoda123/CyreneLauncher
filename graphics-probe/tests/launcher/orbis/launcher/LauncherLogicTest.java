@@ -29,7 +29,7 @@ public final class LauncherLogicTest {
         lwjglUpgrade();
         runtimeSelection();
         installedBootstrap();
-        ownershipAndAssets();
+        downloadsWithoutMicrosoftAccountAndAssets();
         runtimeDownload();
         instanceArguments();
         skinFaces();
@@ -128,8 +128,7 @@ public final class LauncherLogicTest {
         String jars = System.getenv("ORBIS_LWJGL_JARS");
         Path root = Files.createTempDirectory("lwjgl-upgrade");
         Path libraries = Files.createDirectories(root.resolve("libraries"));
-        VersionStore store = new VersionStore(root.resolve("home"), libraries, root.resolve("assets"), root.resolve("x.json"),
-                () -> { });
+        VersionStore store = new VersionStore(root.resolve("home"), libraries, root.resolve("assets"), root.resolve("x.json"));
         Path dir = Files.createDirectories(store.versionsRoot().resolve("1.20.1-vanilla"));
         String profile = "{\"libraries\":[{\"name\":\"com.mojang:brigadier:1.1.8\"},{\"name\":\"org.lwjgl:lwjgl:3.2.2\"},"
                 + "{\"name\":\"org.lwjgl:lwjgl:3.2.2:natives-linux\"},{\"name\":\"org.lwjgl:lwjgl-glfw:3.2.2\"},"
@@ -447,23 +446,23 @@ public final class LauncherLogicTest {
         return home;
     }
 
-    /** Game downloads need a signed-in owner; a downloaded version is told where its assets are. */
-    private static void ownershipAndAssets() throws IOException {
+    /** A local offline profile can start a download; downloaded versions use the launcher's asset directory. */
+    private static void downloadsWithoutMicrosoftAccountAndAssets() throws IOException {
         Path root = Files.createTempDirectory("ownership");
-        VersionStore refusing = new VersionStore(root.resolve("home"), root.resolve("libraries"), root.resolve("assets"),
-                root.resolve("x.json"), () -> { throw new IOException(AccountStore.OWNERSHIP_REQUIRED); });
+        VersionStore store = new VersionStore(root.resolve("home"), root.resolve("libraries"), root.resolve("assets"),
+                root.resolve("x.json"));
         try {
-            refusing.install(new VersionStore.GameVersion("1.20.4", "https://example.invalid/1.20.4", "0"),
-                    VersionStore.Loader.VANILLA, new InstanceStore.Operation(), false);
-            check(false, "an install without a Minecraft owner is refused");
-        } catch (IOException refused) {
-            check(AccountStore.OWNERSHIP_REQUIRED.equals(refused.getMessage()),
-                    "refused before any download: " + refused.getMessage());
+            store.install(new VersionStore.GameVersion("1.14", "https://example.invalid/1.14", "0"),
+                    VersionStore.Loader.FORGE, new InstanceStore.Operation(), false);
+            check(false, "unsupported Forge version must be rejected");
+        } catch (IOException rejected) {
+            check("Unsupported Forge Minecraft version".equals(rejected.getMessage()),
+                    "download reaches version validation without a Microsoft account: " + rejected.getMessage());
         }
         AccountStore accounts = new AccountStore(root.resolve("home"), Files.createDirectories(root.resolve("runner")));
         check(accounts.list().isEmpty(), "a fresh launcher does not create a user");
         check(accounts.defaultAccount() == null, "a fresh launcher has no default account");
-        check(!accounts.hasOwnedMinecraft(), "a fresh launcher asks for an account before installing");
+        check(!accounts.hasOwnedMinecraft(), "a fresh launcher has no verified ownership record");
         try {
             accounts.putMicrosoft("ffffffffffffffffffffffffffffffff", "TooLarge", "client", "x".repeat(20000));
             check(false, "oversized credentials must be rejected");
@@ -473,7 +472,7 @@ public final class LauncherLogicTest {
         }
         accounts.putMicrosoft("0123456789abcdef0123456789abcdef", "Tester", "00000000-0000-0000-0000-000000000000",
                 "refresh");
-        check(accounts.hasOwnedMinecraft(), "a saved verified ownership record unlocks installs");
+        check(accounts.hasOwnedMinecraft(), "a saved legacy ownership record remains available");
         check(accounts.defaultAccount().username().equals("Tester"), "the first own account becomes default");
         AccountStore reopened = new AccountStore(root.resolve("home"), root.resolve("runner"));
         check(reopened.list().size() == 1, "reopening retains only the user account");

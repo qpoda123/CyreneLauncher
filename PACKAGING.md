@@ -65,8 +65,7 @@ volume type, and its patch content flags are unfinished.
 ## Offline profiles
 
 The launcher has no Microsoft sign-in flow, app registration, or bundled authentication credentials.
-Offline profiles use Minecraft's standard `OfflinePlayer` UUID and can launch installed game versions.
-Downloading the base game still requires a previously verified ownership record.
+Offline profiles use Minecraft's standard `OfflinePlayer` UUID and can download supported versions from the configured source, then launch them locally.
 
 ## Console acceptance and upgrade
 

@@ -16,7 +16,7 @@ public final class ForgeIntegration {
         VersionStore.offeredJava = Runtime.version().feature();
         VersionStore.Loader loader = VersionStore.Loader.valueOf(args[1]);
         String minecraft = args[2], build = args[3];
-        VersionStore store = new VersionStore(root.resolve("home"),root.resolve("libraries"),root.resolve("assets"),Path.of(args[4]),() -> { });
+        VersionStore store = new VersionStore(root.resolve("home"),root.resolve("libraries"),root.resolve("assets"),Path.of(args[4]));
         JsonObject manifest = JsonParser.parseString(new String(VersionStore.fetch(VersionStore.MANIFEST_URL,16L << 20),java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
         for (JsonElement element : manifest.getAsJsonArray("versions")) {
             JsonObject game = element.getAsJsonObject();

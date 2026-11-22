@@ -9,12 +9,12 @@ This guide covers the current launcher. Older releases may have different menus 
 ## What you need
 
 - A PS4 already set up to install and run homebrew `.pkg` applications.
-- An already-installed Minecraft: Java Edition version.
+- A game version supported by the configured download source, or an already-installed version.
 - Internet access for mod and runtime downloads.
 - Free console storage for the launcher, games, runtimes, mods, and worlds. Large modpacks need more space.
 - A controller for launcher navigation. A keyboard and mouse are useful for Minecraft; controller gameplay depends on the game's controller mod and setup.
 
-The package includes the launcher's Java runtime and graphics libraries. You do not need to compile anything or install Java manually. This build has no Microsoft sign-in and does not download the base Minecraft game.
+The package includes the launcher's Java runtime and graphics libraries. You do not need to compile anything or install Java manually. This build has no Microsoft sign-in; game downloads use the configured source.
 
 ## Install and launch
 
@@ -24,7 +24,7 @@ The package includes the launcher's Java runtime and graphics libraries. You do 
 4. Open **Cyrene Launcher** from the PS4 home screen.
 5. Choose **Offline login** on the main screen and create a local player profile.
 
-The launcher creates its settings and data folders on first launch. Offline login can launch game versions already installed in the launcher's data.
+The launcher creates its settings and data folders on first launch. Offline login can download supported game versions and launch them without Microsoft sign-in.
 
 ## Launcher controls
 
@@ -47,13 +47,13 @@ Some pages have extra controls. Follow the on-screen hints when searching, manag
 
 Select **Offline login** on the main screen. If you have no profile yet, enter a player name (1–16 letters, numbers, or underscores). The profile is saved locally and selected for **Play**. To switch profiles or add another, open **Accounts** from the main screen and select a profile.
 
-Offline profiles work with installed game versions and single-player worlds. They do not authenticate with online-mode servers. This build does not include Microsoft sign-in or base-game downloads; an installed game version is required. Downloading a new base game version still requires a previously verified ownership record.
+Offline profiles work with downloaded or installed game versions and single-player worlds. They do not authenticate with online-mode servers. This build does not include Microsoft sign-in; supported game versions can be downloaded from the configured source.
 
 ## Create your first Minecraft instance
 
 An **instance** is a separate game setup with its own name, mods, settings, and worlds. Use separate instances to try different versions or modpacks without mixing their files.
 
-This offline-only build can create instances from game versions already installed. Downloading a new base game version is unavailable unless the launcher already has a verified ownership record from an earlier version.
+This offline-only build can create instances from installed versions or download a supported version from the configured source.
 
 1. Open **Instances** and choose **New instance** from the instance actions.
 2. Choose the Minecraft-version option.
@@ -162,7 +162,7 @@ Copy the whole instance folder to preserve its setup, or at least `saves/` to pr
 
 | Problem | What to try |
 | --- | --- |
-| No game version is available | This offline-only build launches installed game versions; it does not download the base game. |
+| No game version is available | Check that the configured game-version source is reachable and offers a supported version. |
 | Offline profile cannot log in | Enter a valid 1–16 character name using letters, numbers, or underscores, then retry. |
 | Download or runtime installation fails | Check internet access and free space, then retry. Java 21/25 must finish downloading before games needing them can launch. |
 | Minecraft crashes after adding mods | Disable the most recently added mods, check dependencies, and try an unmodified instance of the same version. |

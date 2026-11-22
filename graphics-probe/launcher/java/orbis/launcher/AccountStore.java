@@ -20,8 +20,6 @@ import com.google.gson.JsonParser;
 /** Local player profiles and legacy ownership metadata. */
 final class AccountStore {
     static final String OFFLINE_ID = "offline";
-    static final String OWNERSHIP_REQUIRED =
-            "Minecraft downloads require a previously verified ownership account. Offline profiles can launch installed versions.";
     static final String OFFLINE_ACCOUNT_REQUIRED = "Create or select an offline profile before playing.";
     private static final int SCHEMA = 1;
     private static final int MAX_METADATA = 65536;
@@ -59,7 +57,7 @@ final class AccountStore {
     }
 
     synchronized List<Account> list() { return List.copyOf(accounts); }
-    /** A previously verified owner record can authorize game downloads. */
+    /** Reports whether a legacy verified Microsoft-account record is available. */
     synchronized boolean hasOwnedMinecraft() {
         for (Account account : accounts) {
             if (!"microsoft".equals(account.kind())) continue;

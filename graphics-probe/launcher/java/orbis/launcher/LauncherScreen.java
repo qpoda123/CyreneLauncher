@@ -275,17 +275,6 @@ class LauncherScreen {
         return accounts;
     }
 
-    /** Downloading Minecraft needs a previously verified owner; offline profiles can play installed versions. */
-    private boolean ownsMinecraft() {
-        try {
-            if (accounts().hasOwnedMinecraft()) return true;
-        } catch (IOException failure) {
-            // An unreadable account store proves no ownership.
-        }
-        setStatus(AccountStore.OWNERSHIP_REQUIRED, WARN);
-        return false;
-    }
-
     // ------------------------------------------------------------------ input
 
     /** Legacy action-only entry point retained for callers that do not have source metadata. */
@@ -753,8 +742,6 @@ class LauncherScreen {
                 if (selected == 0) cycleLoader(+1);
                 else if (catalogLoader == versionLoader && selected - 1 < catalog.size()) {
                     VersionStore.GameVersion version = catalog.get(selected - 1);
-                    if (installedFor(version, versionLoader) == null && !builtIn(version, versionLoader)
-                            && !ownsMinecraft()) return;
                     pendingVersion = version;
                     pendingLoader = versionLoader;
                     nameMode = NameMode.CREATE;
@@ -1015,7 +1002,6 @@ class LauncherScreen {
         final InstanceStore.Instance instance = config.selectedInstance();
         // An instance without a game yet: install the newest Minecraft with Fabric, then play it.
         if (config.installed(instance) == null && config.launcherOnly) {
-            if (!ownsMinecraft()) return;
             startInstanceOperation("Finding the latest Minecraft...", new InstanceStore.Operation(), op -> {
                 op.progress("Finding the latest Minecraft...");
                 List<VersionStore.GameVersion> versions = fetchCatalog(VersionStore.Loader.FABRIC);
@@ -1604,7 +1590,6 @@ class LauncherScreen {
 
     /** Downloads the chosen pack version (or the newest compatible one) and shows what installing it means. */
     private void installPack(ModrinthClient.VersionInfo version) {
-        if (!ownsMinecraft()) return;
         ModrinthClient.Hit hit = chosen;
         ModrinthClient client = modrinth;
         PackInstaller packs = packInstaller();
