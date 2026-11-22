@@ -1,6 +1,6 @@
 # Cyrene Launcher
 
-Play an installed copy of Minecraft: Java Edition on your PS4. Cyrene Launcher uses local offline profiles, manages separate game instances, and browses mods and modpacks from Modrinth.
+Download and play supported game versions on your PS4 with local offline profiles. Cyrene Launcher manages separate game instances and browses mods and modpacks from Modrinth.
 
 **[Download Cyrene Launcher](https://github.com/CyreneLauncher/CyreneLauncher/releases/latest)** · **[Report a problem](https://github.com/CyreneLauncher/CyreneLauncher/issues)**
 
@@ -10,7 +10,7 @@ This guide covers the current launcher. Older releases may have different menus 
 
 - A PS4 already set up to install and run homebrew `.pkg` applications.
 - A game version supported by the configured download source, or an already-installed version.
-- Internet access for mod and runtime downloads.
+- Internet access for game, mod, and runtime downloads.
 - Free console storage for the launcher, games, runtimes, mods, and worlds. Large modpacks need more space.
 - A controller for launcher navigation. A keyboard and mouse are useful for Minecraft; controller gameplay depends on the game's controller mod and setup.
 
