@@ -12,7 +12,7 @@ This guide covers the current launcher. Older releases may have different menus 
 - A game version supported by the configured download source, or an already-installed version.
 - Internet access for game, mod, and runtime downloads.
 - Free console storage for the launcher, games, runtimes, mods, and worlds. Large modpacks need more space.
-- A controller for launcher navigation. A keyboard and mouse are useful for Minecraft; controller gameplay depends on the game's controller mod and setup.
+- A controller. It navigates the launcher and plays Minecraft; a keyboard and mouse also work.
 
 The package includes the launcher's Java runtime and graphics libraries. You do not need to compile anything or install Java manually. This build has no Microsoft sign-in; game downloads use the configured source.
 
@@ -87,7 +87,12 @@ Select an instance, move to its actions, and choose **Play**. Cyrene uses the se
 
 After you exit Minecraft, reopen Cyrene Launcher from the PS4 home screen to select another instance or change settings.
 
-Launcher controller navigation and Minecraft controller gameplay are separate. For controller gameplay, install a compatible controller mod for your Minecraft version and configure it in-game. A keyboard and mouse can also be used.
+Minecraft plays with the controller as it is, with no controller mod: the launcher makes the PS4 pad act as a keyboard and mouse, as Pojav and Amethyst do.
+
+- **In game:** left stick moves, right stick looks, R2 attacks, L2 uses, Cross jumps, Circle drops, Triangle opens the inventory, Square swaps hands, L3 sprints, R3 sneaks, L1/R1 change the hotbar slot, D-pad up changes the camera view, D-pad down opens chat, the touchpad click shows the player list, and Options is Escape.
+- **In menus:** either stick or the touchpad moves the pointer (the touchpad works like a laptop trackpad). R2 or Cross clicks, L2 or Square right-clicks, hold Triangle to shift-click, L1/R1 scroll, and Circle or Options goes back.
+
+An instance with Controlify keeps using Controlify instead. To turn the mapping off for one instance, add `-Dorbis.glfw.padMapping=false` to its JVM arguments; `-Dorbis.glfw.padLookSpeed=900`, `-Dorbis.glfw.padCursorSpeed=1000` and `-Dorbis.glfw.padTouchGain=1.6` tune camera speed, stick pointer speed and touchpad speed. A keyboard and mouse can also be used.
 
 ## Install mods
 

@@ -58,6 +58,7 @@ final class LaunchPreparation {
         byte[] originalConf = LauncherFiles.read(confFile, MAX_FILE_BYTES);
         List<String> extra = new ArrayList<>(compatibilityMod(version));
         extra.addAll(lwjglOptions(version));
+        extra.addAll(padMappingOptions(instance));
         // The instance's own JVM arguments last, after checking none takes over what the runner manages.
         try { extra.addAll(InstanceArguments.jvm(instance.jvmArgs())); }
         catch (IllegalArgumentException invalid) { throw new IOException("JVM arguments: " + invalid.getMessage()); }
@@ -245,6 +246,17 @@ final class LaunchPreparation {
             LauncherFiles.write(target, jar, false);
         }
         return List.of((version.loader() == VersionStore.Loader.QUILT ? "-Dloader.addMods=" : "-Dfabric.addMods=") + target);
+    }
+
+    /**
+     * Turns on the GLFW facade's pad-to-keyboard-and-mouse mapping, so Minecraft needs no controller mod.
+     * It stays off for an instance with Controlify, which reads the same pad: both would drive the game.
+     * The instance's own JVM arguments come after these, so -Dorbis.glfw.padMapping=false turns it off
+     * for one instance, and -Dorbis.glfw.padLookSpeed, padCursorSpeed and padTouchGain tune it.
+     */
+    private static List<String> padMappingOptions(InstanceStore.Instance instance) {
+        ModInspector.Installed mods = ModInspector.installed(instance.gameDir().resolve("mods"), java.util.Map.of());
+        return mods.ids().contains("controlify") ? List.of() : List.of("-Dorbis.glfw.padMapping=true");
     }
 
     private static byte[] options(byte[] original, InstanceStore.Instance instance, VersionStore.Installed version,
