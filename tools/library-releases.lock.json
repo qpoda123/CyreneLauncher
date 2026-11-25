@@ -18,8 +18,8 @@
     },
     "lwjgl-orbis": {
       "spec": "release.json",
-      "revision": "fba5bedce1f4b6eaa02c34a43874f100084dd310",
-      "sha256": "d2eaab68a38d0fe1b393feb3a7154303a859989280e1618f178dfeffad863e83"
+      "revision": "a4551f4676f3ffc9d5730baef487069de528cddb",
+      "sha256": "239a0df7ce8903ee23ce2685549ea4370f1fdb593480d696d3dd4d2b826d6853"
     }
   }
 }

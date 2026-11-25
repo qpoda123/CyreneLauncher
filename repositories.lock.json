@@ -12,7 +12,7 @@
     },
     "lwjgl-orbis": {
       "directory": "lwjgl-orbis",
-      "revision": "fba5bedce1f4b6eaa02c34a43874f100084dd310",
+      "revision": "a4551f4676f3ffc9d5730baef487069de528cddb",
       "url": "https://github.com/qpoda123/lwjgl-orbis.git",
       "dependencies": [
         "orbis-runtime-support",
