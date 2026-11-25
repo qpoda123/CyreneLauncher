@@ -12,8 +12,8 @@
     },
     "lwjgl-orbis": {
       "directory": "lwjgl-orbis",
-      "revision": "ac58aa74a0800eb3c7eb1da87123486c4d25587a",
-      "url": "https://github.com/CyreneLauncher/lwjgl-orbis.git",
+      "revision": "fba5bedce1f4b6eaa02c34a43874f100084dd310",
+      "url": "https://github.com/qpoda123/lwjgl-orbis.git",
       "dependencies": [
         "orbis-runtime-support",
         "orbis-compat",
